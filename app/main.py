@@ -16,7 +16,8 @@ app.add_middleware(
 )
 
 # Cambia aquí por la ruta real de tu proyecto
-BASE_DIR = "/Users/prueba/Desktop/mi-backend-fastapi/app"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 ENSAMBLADOR_PATH = os.path.join(BASE_DIR, "ensamblador.py")
 
 @app.post("/api/ensamblar")

@@ -1,6 +1,7 @@
 import os
 import subprocess
-BASE_DIR = "/Users/prueba/Desktop/mi-backend-fastapi/app"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
