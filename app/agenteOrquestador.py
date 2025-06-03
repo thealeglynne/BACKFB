@@ -3,7 +3,9 @@ import json
 import os
 
 # Ruta base absoluta en Render
-BASE_DIR = "/Users/prueba/Desktop/mi-backend-fastapi/app"
+# SIEMPRE ASÍ (en TODOS tus scripts)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 
 AGENTES = [
