@@ -24,30 +24,36 @@ GLOBAL_PARAMS = {
 
 contexto = {"global_params": GLOBAL_PARAMS}
 
-def run_agent(agente, contexto):
-    with open("contexto_global.json", "w", encoding="utf-8") as f:
+# Obtiene la ruta base del script actual (agenteOrquestador.py)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def run_agent(agente_rel_path, contexto):
+    # Construye la ruta absoluta al agente
+    agente_path = os.path.join(BASE_DIR, agente_rel_path)
+    with open(os.path.join(BASE_DIR, "contexto_global.json"), "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)
     result = subprocess.run(
-        ["python", agente],
+        ["python", agente_path],
         capture_output=True,
         text=True
     )
     if result.stderr:
-        print(f"--- ERROR en {agente} ---\n{result.stderr}")
+        print(f"--- ERROR en {agente_rel_path} ---\n{result.stderr}")
     if not result.stdout.strip():
-        print(f"--- {agente} no produjo ninguna salida en stdout ---")
+        print(f"--- {agente_rel_path} no produjo ninguna salida en stdout ---")
     return result.stdout.strip()
 
 def main():
-    for key, script in AGENTES:
-        print(f"\n========== Ejecutando {script} ==========\n")
-        output = run_agent(script, contexto)
+    for key, script_rel_path in AGENTES:
+        print(f"\n========== Ejecutando {script_rel_path} ==========\n")
+        output = run_agent(script_rel_path, contexto)
         contexto[key] = output
-        # CORREGIDO: usa solo el nombre base para guardar el output
-        output_filename = "output_" + os.path.basename(script).replace('.py', '.txt')
-        with open(output_filename, "w", encoding="utf-8") as f:
+        output_filename = "output_" + os.path.basename(script_rel_path).replace('.py', '.txt')
+        output_path = os.path.join(BASE_DIR, output_filename)
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(output)
-    with open("outputs.json", "w", encoding="utf-8") as f:
+    # Guarda el JSON final en la ruta absoluta
+    with open(os.path.join(BASE_DIR, "outputs.json"), "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)
 
 if __name__ == "__main__":

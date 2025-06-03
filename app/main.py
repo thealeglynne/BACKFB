@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
-import subprocess  # necesario para ejecutar procesos
+import subprocess
 
 app = FastAPI()
 
@@ -18,6 +18,9 @@ app.add_middleware(
 # Variables de entorno
 JSON_BIN_ID = os.getenv("JSON_BIN_ID")
 JSON_BIN_API_KEY = os.getenv("JSON_BIN_API_KEY")
+
+# Directorio base del proyecto (donde está este archivo main.py o similar)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @app.get("/api/programa")
 def get_programa():
@@ -41,13 +44,13 @@ def get_temas():
 def agente_temas():
     return ["Tema 1", "Tema 2", "Tema 3"]
 
-# Aquí el endpoint que detecta /api/orquestar
 @app.post("/api/orquestar")
 def orquestar():
     try:
-        # Ejecuta el script orquestador
+        # Ruta absoluta al script agenteOrquestador.py
+        orquestador_path = os.path.join(BASE_DIR, "agenteOrquestador.py")
         result = subprocess.run(
-            ["python", "app/agenteOrquestador.py"],  # Ajusta la ruta si tu script está en otra carpeta
+            ["python", orquestador_path],
             capture_output=True,
             text=True
         )
