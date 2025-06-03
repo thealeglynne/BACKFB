@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
 import subprocess
+import traceback
 
 app = FastAPI()
 
@@ -59,7 +60,8 @@ def orquestar():
             ["python3", ORQUESTADOR_PATH],
             capture_output=True,
             text=True,
-            cwd=BASE_DIR
+            cwd=BASE_DIR,
+            timeout=240  # Puedes ajustar el timeout si tus agentes tardan mucho
         )
         outputs = {}
         for filename in OUTPUT_FILES:
@@ -80,5 +82,17 @@ def orquestar():
             "output": result.stdout.strip(),
             "outputs": outputs
         }
+    except subprocess.TimeoutExpired:
+        # Manejo especial por timeout
+        return {
+            "success": False,
+            "error": "Tiempo de espera agotado al ejecutar el orquestador.",
+            "outputs": {}
+        }
     except Exception as e:
-        return {"success": False, "error": str(e), "outputs": {}}
+        # Devuelve SIEMPRE JSON, aun en errores inesperados
+        return {
+            "success": False,
+            "error": str(e) + "\n" + traceback.format_exc(),
+            "outputs": {}
+        }
