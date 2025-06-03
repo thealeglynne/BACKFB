@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
+import subprocess  # necesario para ejecutar procesos
 
 app = FastAPI()
 
-# Habilitar CORS (ajusta el dominio en allow_origins si lo prefieres)
+# Habilitar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Usa variables de entorno
+# Variables de entorno
 JSON_BIN_ID = os.getenv("JSON_BIN_ID")
 JSON_BIN_API_KEY = os.getenv("JSON_BIN_API_KEY")
 
@@ -31,14 +32,27 @@ def get_programa():
 
 @app.get("/api/temas")
 def get_temas():
-    # Debes definir agente_temas, aquí un ejemplo:
-    # return {"temas": "Aquí iría la lógica real de agente_temas"}
     try:
         temas = agente_temas()
         return {"temas": temas}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Ejemplo mínimo para que no falle por no definir agente_temas:
 def agente_temas():
     return ["Tema 1", "Tema 2", "Tema 3"]
+
+# Aquí el endpoint que detecta /api/orquestar
+@app.post("/api/orquestar")
+def orquestar():
+    try:
+        # Ejecuta el script orquestador
+        result = subprocess.run(
+            ["python", "ageneOrquestador.py"],  # Ajusta la ruta si tu script está en otra carpeta
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            return {"error": result.stderr or "Error ejecutando el orquestador"}
+        return {"output": result.stdout.strip()}
+    except Exception as e:
+        return {"error": str(e)}
