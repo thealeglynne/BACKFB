@@ -19,8 +19,9 @@ app.add_middleware(
 JSON_BIN_ID = os.getenv("JSON_BIN_ID")
 JSON_BIN_API_KEY = os.getenv("JSON_BIN_API_KEY")
 
-# Directorio base del proyecto (donde está este archivo main.py o similar)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Ruta absoluta del orquestador
+BASE_DIR = "/opt/render/project/src/app"
+ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
 @app.get("/api/programa")
 def get_programa():
@@ -36,23 +37,19 @@ def get_programa():
 @app.get("/api/temas")
 def get_temas():
     try:
-        temas = agente_temas()
+        temas = ["Tema 1", "Tema 2", "Tema 3"]  # Función simple para ejemplo
         return {"temas": temas}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def agente_temas():
-    return ["Tema 1", "Tema 2", "Tema 3"]
-
 @app.post("/api/orquestar")
 def orquestar():
     try:
-        # Ruta absoluta al script agenteOrquestador.py
-        orquestador_path = os.path.join(BASE_DIR, "agenteOrquestador.py")
         result = subprocess.run(
-            ["python", orquestador_path],
+            ["python3", ORQUESTADOR_PATH],
             capture_output=True,
-            text=True
+            text=True,
+            cwd=BASE_DIR  # Ejecutar en el directorio base para mejor manejo de rutas relativas si aplica
         )
         if result.returncode != 0:
             return {"error": result.stderr or "Error ejecutando el orquestador"}
