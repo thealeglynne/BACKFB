@@ -1,7 +1,7 @@
 import os
 import subprocess
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
@@ -25,6 +25,7 @@ def ejecutar_orquestador():
     if result.returncode != 0:
         print("¡Error ejecutando el orquestador!\n")
         print(result.stderr)
+        print(result.stdout)  # Por si el error está en stdout
         exit(1)
     else:
         print("Orquestador ejecutado correctamente.\n")
@@ -43,5 +44,10 @@ def mostrar_todo():
             print("(Archivo no encontrado)")
 
 if __name__ == "__main__":
-    ejecutar_orquestador()
-    mostrar_todo()
+    try:
+        ejecutar_orquestador()
+        mostrar_todo()
+    except Exception as e:
+        import traceback
+        print("ERROR EN ENSAMBLADOR:")
+        print(traceback.format_exc())

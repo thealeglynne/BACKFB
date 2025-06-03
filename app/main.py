@@ -15,9 +15,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cambia aquí por la ruta real de tu proyecto
+# Usar ruta relativa, funciona tanto local como en producción
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 ENSAMBLADOR_PATH = os.path.join(BASE_DIR, "ensamblador.py")
 
 @app.post("/api/ensamblar")
@@ -28,12 +27,13 @@ def ensamblar():
             capture_output=True,
             text=True,
             cwd=BASE_DIR,
-            timeout=300  # Ajusta el timeout si lo necesitas
+            timeout=300
         )
         if result.returncode != 0:
+            # Mostrar ambos: stderr y stdout, para ver el error completo
             return {
                 "success": False,
-                "error": result.stderr or "Error ejecutando el ensamblador",
+                "error": (result.stderr + "\n" + result.stdout) if (result.stderr or result.stdout) else "Error ejecutando el ensamblador",
                 "ensamblado": ""
             }
         return {
