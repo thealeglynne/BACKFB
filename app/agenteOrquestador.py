@@ -2,7 +2,9 @@ import subprocess
 import json
 import os
 
-BASE_DIR = "/opt/render/project/src/app"
+# Ruta base absoluta en Render
+BASE_DIR = "/Users/prueba/Desktop/mi-backend-fastapi/app"
+
 
 AGENTES = [
     ("temas", os.path.join(BASE_DIR, "agentes/AgenteTemas.py")),
@@ -49,7 +51,7 @@ def main():
         output_filename = os.path.join(BASE_DIR, "output_" + os.path.basename(script_path).replace('.py', '.txt'))
         with open(output_filename, "w", encoding="utf-8") as f:
             f.write(output)
-    # Guarda el contexto general
+    # Guarda todo el contexto general
     outputs_file = os.path.join(BASE_DIR, "outputs.json")
     with open(outputs_file, "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)

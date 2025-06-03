@@ -1,0 +1,46 @@
+import os
+import subprocess
+BASE_DIR = "/Users/prueba/Desktop/mi-backend-fastapi/app"
+
+ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
+
+OUTPUT_FILES = [
+    "output_AgenteTemas.txt",
+    "output_AgenteIntroduccion.txt",
+    "output_Agente7conceptosClave.txt",
+    "output_AgenteEnsayo.txt",
+    "output_AgenteConclusiones.txt",
+    "output_AgenteQuizActividades.txt"
+]
+
+def ejecutar_orquestador():
+    print("Ejecutando orquestador...")
+    result = subprocess.run(
+        ["python3", ORQUESTADOR_PATH],
+        cwd=BASE_DIR,
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print("¡Error ejecutando el orquestador!\n")
+        print(result.stderr)
+        exit(1)
+    else:
+        print("Orquestador ejecutado correctamente.\n")
+
+def mostrar_todo():
+    for filename in OUTPUT_FILES:
+        file_path = os.path.join(BASE_DIR, filename)
+        print(f"\n{'='*60}")
+        print(f"== {filename.replace('output_', '').replace('.txt','').replace('Agente','Agente ')} ==")
+        print(f"{'='*60}")
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                contenido = f.read().strip()
+                print(contenido if contenido else "(Archivo vacío)")
+        else:
+            print("(Archivo no encontrado)")
+
+if __name__ == "__main__":
+    ejecutar_orquestador()
+    mostrar_todo()
