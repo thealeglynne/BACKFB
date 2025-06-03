@@ -7,7 +7,6 @@ import traceback
 
 app = FastAPI()
 
-# Habilitar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,15 +15,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Variables de entorno
 JSON_BIN_ID = os.getenv("JSON_BIN_ID")
 JSON_BIN_API_KEY = os.getenv("JSON_BIN_API_KEY")
-
-# Ruta absoluta del orquestador
 BASE_DIR = "/opt/render/project/src/app"
 ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
-# Archivos output que quieres enviar al frontend
 OUTPUT_FILES = [
     "output_AgenteTemas.txt",
     "output_AgenteIntroduccion.txt",
@@ -48,7 +43,7 @@ def get_programa():
 @app.get("/api/temas")
 def get_temas():
     try:
-        temas = ["Tema 1", "Tema 2", "Tema 3"]  # Función simple para ejemplo
+        temas = ["Tema 1", "Tema 2", "Tema 3"]
         return {"temas": temas}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -56,13 +51,15 @@ def get_temas():
 @app.post("/api/orquestar")
 def orquestar():
     try:
+        # Ejecuta el orquestador pero ignora stdout y stderr del orquestador
         result = subprocess.run(
             ["python3", ORQUESTADOR_PATH],
-            capture_output=True,
-            text=True,
             cwd=BASE_DIR,
-            timeout=240  # Puedes ajustar el timeout si tus agentes tardan mucho
+            timeout=240,
+            capture_output=True,  # Puedes dejar esto para errores, pero no los devuelves
+            text=True
         )
+
         outputs = {}
         for filename in OUTPUT_FILES:
             file_path = os.path.join(BASE_DIR, filename)
@@ -71,6 +68,7 @@ def orquestar():
                     outputs[filename] = f.read()
             else:
                 outputs[filename] = "(Archivo no encontrado)"
+        # NO devuelvas result.stdout ni result.stderr
         if result.returncode != 0:
             return {
                 "success": False,
@@ -79,18 +77,15 @@ def orquestar():
             }
         return {
             "success": True,
-            "output": result.stdout.strip(),
             "outputs": outputs
         }
     except subprocess.TimeoutExpired:
-        # Manejo especial por timeout
         return {
             "success": False,
             "error": "Tiempo de espera agotado al ejecutar el orquestador.",
             "outputs": {}
         }
     except Exception as e:
-        # Devuelve SIEMPRE JSON, aun en errores inesperados
         return {
             "success": False,
             "error": str(e) + "\n" + traceback.format_exc(),
