@@ -47,7 +47,7 @@ def orquestar():
     try:
         # Ejecuta el script orquestador
         result = subprocess.run(
-            ["python", "agenteOrquestador.py"],  # Ajusta la ruta si tu script está en otra carpeta
+            ["python", "app/agenteOrquestador.py"],  # Ajusta la ruta si tu script está en otra carpeta
             capture_output=True,
             text=True
         )
