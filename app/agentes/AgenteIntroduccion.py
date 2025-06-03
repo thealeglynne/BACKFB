@@ -1,4 +1,3 @@
-from config import GROQ_API_KEY, SERPER_API_KEY, JSON_BIN_ID, JSON_BIN_API_KEY, CONTEXTO_GLOBAL_FILE
 import os
 import requests
 import json
@@ -7,9 +6,19 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+# ===============================
+# CONFIGURACIÓN DIRECTA DE APIS Y CONSTANTES
+
+GROQ_API_KEY = "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"
+SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
+JSON_BIN_ID = "682f27e08960c979a59f5afe"
+JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
+CONTEXTO_GLOBAL_FILE = "contexto_global.json"
+
+# ===============================
 # LLM Configuration
 llm = ChatGroq(
-    model_name="llama3-70b-8192", # Modelo potente para tareas complejas
+    model_name="llama3-70b-8192",
     api_key=GROQ_API_KEY,
     temperature=0.3,
     max_tokens=1500
@@ -80,7 +89,7 @@ def search_web_serper(query, limit_organic=3):
 def get_best_snippets(serper_response, limit=5):
     if not serper_response or "error" in serper_response or "organic" not in serper_response:
         return ""
-    snippets = [r.get("snippet", "") for r in serper_response["organic"] if r.get("snippet")]
+    snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
 # === PROMPT DEL AGENTE ===
@@ -111,7 +120,10 @@ introduccion_chain = LLMChain(llm=llm, prompt=introduccion_prompt_template)
 def main():
     print("--- Ejecutando AgenteIntroduccion ---")
     contexto_global = leer_contexto_global()
-    previos_texto = "\n".join([f"Contenido de '{k}':\n{v}\n" for k, v in contexto_global.items()])
+    previos_texto = "\n".join([
+        f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
+        for k, v in contexto_global.items()
+    ]) or "No hay antecedentes de secciones previas."
     if not previos_texto:
         previos_texto = "No hay antecedentes de secciones previas."
 
@@ -137,14 +149,16 @@ def main():
 
     print("AgenteIntroduccion: Generando contenido...")
     try:
-        introduccion_contenido = introduccion_chain.run(
-            nombre=nombre,
-            nivel=nivel,
-            modalidad=modalidad,
-            semestre=semestre,
-            context=context_web,
-            contexto_previos=previos_texto
-        )
+        introduccion_contenido = introduccion_chain.invoke({
+            "nombre": nombre,
+            "nivel": nivel,
+            "modalidad": modalidad,
+            "semestre": semestre,
+            "context": context_web,
+            "contexto_previos": previos_texto
+        })
+        if isinstance(introduccion_contenido, dict) and "text" in introduccion_contenido:
+            introduccion_contenido = introduccion_contenido["text"]
         sys.stdout.write(introduccion_contenido)
         print("\n--- AgenteIntroduccion finalizado ---")
     except Exception as e:

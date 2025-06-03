@@ -3,27 +3,39 @@ import json
 import os
 
 AGENTES = [
-    ("temas", "AgenteTemas.py"),
-    ("introduccion", "AgenteIntroduccion.py"),
-    ("conceptos_clave", "Agente7conceptosClave.py"),
-    ("ensayo", "AgenteEnsayo.py"),
-    ("conclusiones", "AgenteConclusiones.py"),
-    ("quiz_actividades", "AgenteQuizActividades.py"),
+    ("temas", "agentes/AgenteTemas.py"),
+    ("introduccion", "agentes/AgenteIntroduccion.py"),
+    ("conceptos_clave", "agentes/Agente7conceptosClave.py"),
+    ("ensayo", "agentes/AgenteEnsayo.py"),
+    ("conclusiones", "agentes/AgenteConclusiones.py"),
+    ("quiz_actividades", "agentes/AgenteQuizActividades.py"),
 ]
 
-contexto = {}
+GLOBAL_PARAMS = {
+    "tono": "institucional, académico, claro y motivador",
+    "nivel": "universitario",
+    "modo_salida": "coherente entre secciones",
+    "instrucciones_adicionales": (
+        "Asegúrate de que el vocabulario, los conceptos y el estilo sean consistentes entre secciones. "
+        "Si mencionas temas, conceptos o ejemplos en una sección, retómalos y profundízalos en las siguientes. "
+        "Mantén las definiciones y explicaciones alineadas. Haz referencias cruzadas a secciones previas si es relevante."
+    ),
+}
+
+contexto = {"global_params": GLOBAL_PARAMS}
 
 def run_agent(agente, contexto):
-    # Escribe el contexto acumulado para que el agente lo lea
     with open("contexto_global.json", "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)
-    # Ejecuta el agente
     result = subprocess.run(
         ["python", agente],
         capture_output=True,
         text=True
     )
-    # El agente debe imprimir el contenido resultante
+    if result.stderr:
+        print(f"--- ERROR en {agente} ---\n{result.stderr}")
+    if not result.stdout.strip():
+        print(f"--- {agente} no produjo ninguna salida en stdout ---")
     return result.stdout.strip()
 
 def main():
@@ -31,9 +43,10 @@ def main():
         print(f"\n========== Ejecutando {script} ==========\n")
         output = run_agent(script, contexto)
         contexto[key] = output
-        with open(f"output_{script.replace('.py','.txt')}", "w", encoding="utf-8") as f:
+        # CORREGIDO: usa solo el nombre base para guardar el output
+        output_filename = "output_" + os.path.basename(script).replace('.py', '.txt')
+        with open(output_filename, "w", encoding="utf-8") as f:
             f.write(output)
-    # Guarda todo el contexto final
     with open("outputs.json", "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)
 

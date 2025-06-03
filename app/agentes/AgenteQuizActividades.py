@@ -1,4 +1,3 @@
-from config import GROQ_API_KEY, SERPER_API_KEY, JSON_BIN_ID, JSON_BIN_API_KEY, CONTEXTO_GLOBAL_FILE
 import os
 import requests
 import json
@@ -7,6 +6,16 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+# ===============================
+# CONFIGURACIÓN DIRECTA DE LAS APIS Y CONSTANTES
+
+GROQ_API_KEY = "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"
+SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
+JSON_BIN_ID = "682f27e08960c979a59f5afe"
+JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
+CONTEXTO_GLOBAL_FILE = "contexto_global.json"
+
+# ===============================
 # LLM Configuration
 llm = ChatGroq(
     model_name="llama3-70b-8192", 
@@ -54,7 +63,7 @@ def fetch_course_data():
     except requests.exceptions.Timeout:
         print(f"Error: Timeout al intentar acceder a JSON Bin ({url}).")
     except requests.exceptions.RequestException as e:
-        print(f"Error de red al acceder al JSON Bin: {e}")
+        print(f"Error de red al acceder a JSON Bin: {e}")
     except json.JSONDecodeError:
         print(f"Error al decodificar JSON de la respuesta del bin: {res.text if 'res' in locals() else 'No response'}")
     except Exception as e:
@@ -80,7 +89,7 @@ def search_web_serper(query, limit_organic=3):
 def get_best_snippets(serper_response, limit=5):
     if not serper_response or "error" in serper_response or "organic" not in serper_response:
         return ""
-    snippets = [r.get("snippet", "") for r in serper_response["organic"] if r.get("snippet")]
+    snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
 # === PROMPT DEL AGENTE QUIZ Y ACTIVIDADES ===
@@ -111,7 +120,10 @@ quiz_actividades_chain = LLMChain(llm=llm, prompt=quiz_actividades_prompt_templa
 def main():
     print("--- Ejecutando AgenteQuizActividades ---")
     contexto_global = leer_contexto_global()
-    previos_texto = "\n".join([f"Resumen de '{k}':\n{v[:350]}..." for k, v in contexto_global.items()]) or "No hay antecedentes de secciones previas."
+    previos_texto = "\n".join([
+        f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
+        for k, v in contexto_global.items()
+    ]) or "No hay antecedentes de secciones previas."
 
     materia = fetch_course_data()
     if not materia:
@@ -130,12 +142,15 @@ def main():
 
     print("AgenteQuizActividades: Generando contenido de actividades y quiz...")
     try:
-        quiz_actividades_contenido = quiz_actividades_chain.run(
-            nombre_curso=nombre_curso,
-            nivel=nivel,
-            contexto_previos=previos_texto,
-            context_web=context_web
-        )
+        quiz_actividades_contenido = quiz_actividades_chain.invoke({
+            "nombre_curso": nombre_curso,
+            "nivel": nivel,
+            "contexto_previos": previos_texto,
+            "context_web": context_web
+        })
+        # Si la respuesta viene en dict (como {"text": ...}), extrae el texto
+        if isinstance(quiz_actividades_contenido, dict) and "text" in quiz_actividades_contenido:
+            quiz_actividades_contenido = quiz_actividades_contenido["text"]
         sys.stdout.write(quiz_actividades_contenido)
         print("\n--- AgenteQuizActividades finalizado ---")
     except Exception as e:

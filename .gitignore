@@ -1,16 +1,31 @@
-# Ignora entornos virtuales comunes
+# Entornos virtuales comunes
 venv/
 .venv/
 env/
 ENV/
 
-# Ignora cachés de Python
+# Cachés de Python
 __pycache__/
 *.pyc
 *.pyo
 
-# Ignora archivos de configuración locales
+# Archivos de configuración locales
+.env
 *.env
 
-# Ignora directorio de outputs (opcional)
+# Salidas temporales o de agente/orquestador
 outputs/
+output_*.txt
+contexto_global.json
+outputs.json
+
+# Archivos de sistema/editor (opcional)
+.DS_Store
+*.swp
+*.swo
+
+# (Si usas VSCode)
+.vscode/
+
+# (Si usas Jupyter Notebooks)
+.ipynb_checkpoints/
