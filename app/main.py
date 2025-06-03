@@ -23,6 +23,16 @@ JSON_BIN_API_KEY = os.getenv("JSON_BIN_API_KEY")
 BASE_DIR = "/opt/render/project/src/app"
 ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
+# Archivos output que quieres enviar al frontend
+OUTPUT_FILES = [
+    "output_AgenteTemas.txt",
+    "output_AgenteIntroduccion.txt",
+    "output_Agente7conceptosClave.txt",
+    "output_AgenteEnsayo.txt",
+    "output_AgenteConclusiones.txt",
+    "output_AgenteQuizActividades.txt"
+]
+
 @app.get("/api/programa")
 def get_programa():
     url = f"https://api.jsonbin.io/v3/b/{JSON_BIN_ID}/latest"
@@ -49,10 +59,26 @@ def orquestar():
             ["python3", ORQUESTADOR_PATH],
             capture_output=True,
             text=True,
-            cwd=BASE_DIR  # Ejecutar en el directorio base para mejor manejo de rutas relativas si aplica
+            cwd=BASE_DIR
         )
+        outputs = {}
+        for filename in OUTPUT_FILES:
+            file_path = os.path.join(BASE_DIR, filename)
+            if os.path.exists(file_path):
+                with open(file_path, "r", encoding="utf-8") as f:
+                    outputs[filename] = f.read()
+            else:
+                outputs[filename] = "(Archivo no encontrado)"
         if result.returncode != 0:
-            return {"error": result.stderr or "Error ejecutando el orquestador"}
-        return {"output": result.stdout.strip()}
+            return {
+                "success": False,
+                "error": result.stderr or "Error ejecutando el orquestador",
+                "outputs": outputs
+            }
+        return {
+            "success": True,
+            "output": result.stdout.strip(),
+            "outputs": outputs
+        }
     except Exception as e:
-        return {"error": str(e)}
+        return {"success": False, "error": str(e), "outputs": {}}

@@ -28,11 +28,9 @@ GLOBAL_PARAMS = {
 contexto = {"global_params": GLOBAL_PARAMS}
 
 def run_agent(agente_path, contexto):
-    # Guarda contexto en JSON (en base al directorio de trabajo actual)
     contexto_file = os.path.join(BASE_DIR, "contexto_global.json")
     with open(contexto_file, "w", encoding="utf-8") as f:
         json.dump(contexto, f, indent=2, ensure_ascii=False)
-    # Ejecuta script agente con ruta absoluta
     result = subprocess.run(
         ["python3", agente_path],
         capture_output=True,
