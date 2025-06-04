@@ -2,11 +2,7 @@ import subprocess
 import json
 import os
 
-# Ruta base absoluta en Render
-# SIEMPRE ASÍ (en TODOS tus scripts)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
 
 AGENTES = [
     ("temas", os.path.join(BASE_DIR, "agentes/AgenteTemas.py")),
@@ -15,6 +11,7 @@ AGENTES = [
     ("ensayo", os.path.join(BASE_DIR, "agentes/AgenteEnsayo.py")),
     ("conclusiones", os.path.join(BASE_DIR, "agentes/AgenteConclusiones.py")),
     ("quiz_actividades", os.path.join(BASE_DIR, "agentes/AgenteQuizActividades.py")),
+    ("referencias_web", os.path.join(BASE_DIR, "agentes/AgenteReferenciasWeb.py")),  # <-- Aquí tu nuevo agente
 ]
 
 GLOBAL_PARAMS = {

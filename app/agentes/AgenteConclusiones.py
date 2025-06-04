@@ -16,11 +16,11 @@ JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce
 CONTEXTO_GLOBAL_FILE = "contexto_global.json"
 
 # ===============================
-# LLM Configuration
+# LLM Configuration (sube la temperatura)
 llm = ChatGroq(
     model_name="llama3-70b-8192",
     api_key=GROQ_API_KEY,
-    temperature=0.4,
+    temperature=0.85,    # ¡Para que haya más variedad y creatividad!
     max_tokens=1800
 )
 
@@ -60,12 +60,6 @@ def fetch_course_data():
         else:
             print(f"Error: El contenido de 'record' no es una lista ni un diccionario: {type(record)}")
             return None
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout al intentar acceder a JSON Bin ({url}).")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red al acceder a JSON Bin: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta del bin: {res.text if 'res' in locals() else 'No response'}")
     except Exception as e:
         print(f"Error inesperado al obtener datos del curso: {e}")
     return None
@@ -78,42 +72,40 @@ def search_web_serper(query, limit_organic=3):
         response = requests.post(url, headers=headers, json=data, timeout=10)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout en la búsqueda web con Serper para query: {query}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red en la búsqueda web con Serper: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta de Serper: {response.text if 'response' in locals() else 'No response'}")
-    return {"error": "No se pudo realizar la búsqueda"}
+    except Exception:
+        return {"error": "No se pudo realizar la búsqueda"}
 
 def get_best_snippets(serper_response, limit=5):
-    if not serper_response or "error" in serper_response or "organic" not in serper_response:
+    if not serper_response or "organic" not in serper_response:
         return ""
     snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
-# === PROMPT DEL AGENTE ===
+# === PROMPT DEL AGENTE (¡variado y diferente por tema!) ===
 conclusiones_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "expert_name", "context_web", "contexto_previos"],
+    input_variables=["nombre_curso", "tema", "expert_name", "context_web", "contexto_previos", "conclusion_previa"],
     template=(
         "Actúa como guionista de cierre académico para una unidad de '{nombre_curso}'. "
-        "Elabora un diálogo entre Presentador y el/la experto/a '{expert_name}'. "
+        "Elabora un diálogo de cierre creativo y reflexivo entre Presentador y el/la experto/a '{expert_name}', para el tema '{tema}'. "
+        "Ya se hizo una conclusión previa para otro tema, así que esta vez usa un **enfoque diferente**, evita repetir frases, anécdotas o recursos, y elige otra forma de motivar y cerrar. "
+        "Puedes incorporar frases célebres, metáforas, preguntas inspiradoras o recursos literarios que no se hayan usado en el anterior. "
         "Incluye referencias a los antecedentes del documento:\n{contexto_previos}\nY contexto web:\n{context_web}\n"
-        "\n"
+        "Puedes mencionar desafíos y oportunidades profesionales vinculados a este tema.\n"
         "Estructura:\n"
-        "- Presentador da la bienvenida y contextualiza el cierre.\n"
-        "- Presentador solicita a {expert_name} un resumen de los aprendizajes clave, vinculando cada tema a competencias y situaciones profesionales.\n"
-        "- {expert_name} responde desarrollando los puntos principales, explicando cómo estos conocimientos impactan la formación integral y el futuro del estudiante.\n"
-        "- {expert_name} ofrece una reflexión motivadora sobre la importancia de la formación continua.\n"
-        "- Presentador despide agradeciendo y motivando a los estudiantes.\n"
-        "Mantén un tono formal, reflexivo, y de cierre editorial. Incluye transiciones suaves y frases de inspiración final."
+        "- Presentador da la bienvenida y contextualiza el cierre para el tema '{tema}'.\n"
+        "- Presentador solicita a {expert_name} un resumen de los aprendizajes clave, vinculando cada tema a competencias y situaciones profesionales reales.\n"
+        "- {expert_name} responde desarrollando los puntos principales, explicando cómo estos conocimientos impactan la formación integral y el futuro del estudiante, usando un recurso narrativo distinto al anterior.\n"
+        "- {expert_name} ofrece una reflexión motivadora sobre la importancia de la formación continua, distinta a la previa.\n"
+        "- Presentador despide agradeciendo y motivando a los estudiantes, con una frase final original.\n"
+        "Mantén un tono formal, reflexivo y editorial, pero con toques originales y distintos en cada cierre. Usa transiciones suaves y frases de inspiración final."
     )
 )
 
 conclusiones_chain = LLMChain(llm=llm, prompt=conclusiones_prompt_template)
 
 def main():
-    print("--- Ejecutando AgenteConclusiones ---")
+    print("--- Ejecutando AgenteConclusiones (por tema) ---")
+    resultados = []
     contexto_global = leer_contexto_global()
     previos_texto = "\n".join([
         f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v, str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
@@ -128,31 +120,51 @@ def main():
 
     nombre_curso = materia.get("Nombre del Programa", "Curso Desconocido")
     expert_name = f"el/la Profesor(a) especialista en {nombre_curso}"
+    temas = materia.get("Entrega Contenidos", [])
+    if not temas:
+        print("No hay temas en 'Entrega Contenidos'.")
+        sys.exit(1)
 
-    search_query = f"importancia futura y conclusiones clave de {nombre_curso} en el ámbito profesional"
-    print(f"AgenteConclusiones: Buscando en la web con query: '{search_query}'")
-    serper_data = search_web_serper(search_query, limit_organic=3)
-    context_web = get_best_snippets(serper_data, limit=3)
-    if not context_web:
-        context_web = f"No se encontró información web adicional sobre el futuro de {nombre_curso}."
-        print("AgenteConclusiones: No se obtuvieron snippets de la búsqueda web.")
+    conclusion_previa = ""
+    for idx, tema in enumerate(temas):
+        tema = tema.strip()
+        search_query = f"importancia futura y conclusiones clave de {tema} en el ámbito profesional"
+        print(f"\nAgenteConclusiones: Buscando en la web para el tema '{tema}' con query: '{search_query}'")
+        serper_data = search_web_serper(search_query, limit_organic=3)
+        context_web = get_best_snippets(serper_data, limit=3)
+        if not context_web:
+            context_web = f"No se encontró información web adicional sobre el futuro de {tema}."
+            print(f"AgenteConclusiones: No se obtuvieron snippets de la búsqueda web para el tema '{tema}'.")
 
-    print("AgenteConclusiones: Generando contenido...")
-    try:
-        conclusiones_contenido = conclusiones_chain.invoke({
-            "nombre_curso": nombre_curso,
-            "expert_name": expert_name,
-            "context_web": context_web,
-            "contexto_previos": previos_texto
-        })
-        if isinstance(conclusiones_contenido, dict) and "text" in conclusiones_contenido:
-            conclusiones_contenido = conclusiones_contenido["text"]
-        sys.stdout.write(conclusiones_contenido)
-        print("\n--- AgenteConclusiones finalizado ---")
-    except Exception as e:
-        error_msg = f"Error en AgenteConclusiones al generar contenido: {str(e)}"
-        print(error_msg)
-        sys.stdout.write(f"Error interno en AgenteConclusiones: No se pudieron generar las conclusiones para {nombre_curso}.")
+        print(f"AgenteConclusiones: Generando contenido para el tema '{tema}'...")
+        try:
+            conclusiones_contenido = conclusiones_chain.invoke({
+                "nombre_curso": nombre_curso,
+                "tema": tema,
+                "expert_name": expert_name,
+                "context_web": context_web,
+                "contexto_previos": previos_texto,
+                "conclusion_previa": conclusion_previa[:400] if conclusion_previa else "ninguna"
+            })
+            if hasattr(conclusiones_contenido, "content"):
+                conclusiones_contenido = conclusiones_contenido.content
+            elif isinstance(conclusiones_contenido, dict) and "text" in conclusiones_contenido:
+                conclusiones_contenido = conclusiones_contenido["text"]
+
+            resultado = {
+                "tema": tema,
+                "conclusion": conclusiones_contenido
+            }
+            resultados.append(resultado)
+            conclusion_previa = conclusiones_contenido  # Así el siguiente tema será aún más distinto
+
+        except Exception as e:
+            print(f"Error al generar conclusión para el tema {tema}: {e}")
+
+    # Guarda en un solo archivo JSON (uno por cada tema)
+    with open("agenteConclusiones.json", "w", encoding="utf-8") as f:
+        json.dump(resultados, f, ensure_ascii=False, indent=2)
+    print("\n--- AgenteConclusiones finalizado. Contenido guardado en 'agenteConclusiones.json' ---")
 
 if __name__ == "__main__":
     main()

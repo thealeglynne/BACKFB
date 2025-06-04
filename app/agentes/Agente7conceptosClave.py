@@ -6,8 +6,8 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
-# ===============================
-# CONFIGURACIÓN DIRECTA DE LAS APIS Y CONSTANTES
+# ==============================
+# CONFIGURACIÓN DIRECTA DE CLAVES Y CONSTANTES
 
 GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
@@ -15,12 +15,12 @@ JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
 CONTEXTO_GLOBAL_FILE = "contexto_global.json"
 
-# ===============================
+# ==============================
 # LLM Configuration
 llm = ChatGroq(
     model_name="llama3-70b-8192", 
     api_key=GROQ_API_KEY,
-    temperature=0.2,
+    temperature=0.38,  # Un poco más creativo que el original pero sigue siendo académico
     max_tokens=2000
 )
 
@@ -60,12 +60,6 @@ def fetch_course_data():
         else:
             print(f"Error: El contenido de 'record' no es una lista ni un diccionario: {type(record)}")
             return None
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout al intentar acceder a JSON Bin ({url}).")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red al acceder a JSON Bin: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta del bin: {res.text if 'res' in locals() else 'No response'}")
     except Exception as e:
         print(f"Error inesperado al obtener datos del curso: {e}")
     return None
@@ -78,35 +72,32 @@ def search_web_serper(query, limit_organic=3):
         response = requests.post(url, headers=headers, json=data, timeout=10)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout en la búsqueda web con Serper para query: {query}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red en la búsqueda web con Serper: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta de Serper: {response.text if 'response' in locals() else 'No response'}")
-    return {"error": "No se pudo realizar la búsqueda"}
+    except Exception:
+        return {"error": "No se pudo realizar la búsqueda"}
 
 def get_best_snippets(serper_response, limit=5):
-    if not serper_response or "error" in serper_response or "organic" not in serper_response:
+    if not serper_response or "organic" not in serper_response:
         return ""
-    snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
+    snippets = [r.get("snippet", "") for r in serper_response["organic"] if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
 # === PROMPT DEL AGENTE ===
 conceptos_clave_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "nivel_estudios", "context_web", "contexto_previos"],
+    input_variables=["nombre_curso", "nivel_estudios", "tema", "context_web", "contexto_previos", "conceptos_previos"],
     template=(
-        "Actúa como académico institucional, responsable de generar material base para infografía y comprensión profunda de la unidad '{nombre_curso}', dirigida a estudiantes de {nivel_estudios}.\n"
-        "Considera los antecedentes previos del documento:\n{contexto_previos}\n"
-        "Y este contexto web:\n{context_web}\n"
+        "Actúa como académico institucional, experto en divulgación creativa, y genera material base para infografía y comprensión profunda del tema '{tema}', "
+        "dentro de la unidad '{nombre_curso}' para estudiantes de {nivel_estudios}. "
+        "Considera estos antecedentes del documento:\n{contexto_previos}\n"
+        "Snippets web relevantes:\n{context_web}\n"
+        "Conceptos clave ya generados para otros temas:\n{conceptos_previos}\n"
         "\n"
-        "Identifica y define EXACTAMENTE SIETE (7) conceptos clave, absolutamente esenciales para la comprensión de la unidad.\n"
+        "Identifica y define SIETE (7) conceptos clave, absolutamente esenciales para comprender a fondo este tema (evita repetir literalmente conceptos de otros temas).\n"
         "Para cada concepto:\n"
-        "- Escribe el nombre en negrita y seguido de dos puntos (ej. **Pensamiento Computacional:**).\n"
-        "- Da una definición académica, clara y precisa (3-5 frases), incluye una breve aplicación práctica o ejemplo concreto y, si corresponde, señala relaciones con otros conceptos de la unidad.\n"
-        "El texto debe ser formal, accesible para estudiantes y útil para la elaboración de material gráfico.\n"
+        "- Escribe el nombre en negrita seguido de dos puntos (ejemplo: **Pensamiento Computacional:**).\n"
+        "- Da una definición académica, clara y precisa (máx. 5 frases), incluye una breve aplicación práctica o ejemplo concreto. Usa analogías, metáforas o comparaciones diferentes para que cada explicación sea original. Señala, cuando corresponda, relaciones con otros conceptos del mismo tema.\n"
+        "El texto debe ser formal, creativo y útil para material gráfico didáctico.\n"
         "Formato de salida:\n"
-        "**Concepto 1:** Definición extendida, ejemplo y vinculación con otros conceptos si es pertinente.\n\n"
+        "**Concepto 1:** Definición extendida, ejemplo y vínculos.\n\n"
         "... (continúa hasta 7 conceptos) ..."
     )
 )
@@ -114,12 +105,14 @@ conceptos_clave_prompt_template = PromptTemplate(
 conceptos_clave_chain = LLMChain(llm=llm, prompt=conceptos_clave_prompt_template)
 
 def main():
-    print("--- Ejecutando Agente7ConceptosClave ---")
+    print("--- Ejecutando Agente7ConceptosClave por tema ---")
     contexto_global = leer_contexto_global()
     previos_texto = "\n".join([
         f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
         for k, v in contexto_global.items()
     ]) or "No hay antecedentes de secciones previas."
+    if not previos_texto:
+        previos_texto = "No hay antecedentes de secciones previas."
 
     materia = fetch_course_data()
     if not materia:
@@ -129,32 +122,51 @@ def main():
 
     nombre_curso = materia.get("Nombre del Programa", "Curso Desconocido")
     nivel_estudios = materia.get("Nivel de Estudios", "Nivel Desconocido")
+    temas = materia.get("Entrega Contenidos", [])
+    if not temas:
+        print("No hay temas en 'Entrega Contenidos'.")
+        sys.exit(1)
 
-    search_query = f"definiciones conceptos clave fundamentales {nombre_curso} para {nivel_estudios}"
-    print(f"Agente7ConceptosClave: Buscando en la web con query: '{search_query}'")
-    serper_data = search_web_serper(search_query, limit_organic=5)
-    context_web = get_best_snippets(serper_data, limit=5)
-    if not context_web:
-        context_web = "No se encontró información adicional en la web para los conceptos clave."
-        print("Agente7ConceptosClave: No se obtuvieron snippets de la búsqueda web.")
+    resultados = []
+    conceptos_previos_todos = ""  # Acumulador para que evite repeticiones
 
-    print("Agente7ConceptosClave: Generando contenido...")
-    try:
-        conceptos_contenido = conceptos_clave_chain.invoke({
-            "nombre_curso": nombre_curso,
-            "nivel_estudios": nivel_estudios,
-            "context_web": context_web,
-            "contexto_previos": previos_texto
-        })
-        # EXTRAER EL TEXTO GENERADO
-        if isinstance(conceptos_contenido, dict) and "text" in conceptos_contenido:
-            conceptos_contenido = conceptos_contenido["text"]
-        sys.stdout.write(conceptos_contenido)
-        print("\n--- Agente7ConceptosClave finalizado ---")
-    except Exception as e:
-        error_msg = f"Error en Agente7ConceptosClave al generar contenido: {str(e)}"
-        print(error_msg)
-        sys.stdout.write(f"Error interno en Agente7ConceptosClave: No se pudieron generar los conceptos para {nombre_curso}.")
+    for idx, tema in enumerate(temas):
+        tema = tema.strip()
+        search_query = f"definiciones conceptos clave fundamentales {tema} en {nombre_curso} para {nivel_estudios}"
+        print(f"\nAgente7ConceptosClave: Buscando en la web para el tema '{tema}'...")
+        serper_data = search_web_serper(search_query, limit_organic=4)
+        context_web = get_best_snippets(serper_data, limit=4)
+        if not context_web:
+            context_web = "No se encontró información adicional en la web para los conceptos clave."
+
+        print(f"Agente7ConceptosClave: Generando conceptos clave para el tema '{tema}'...")
+        try:
+            conceptos_contenido = conceptos_clave_chain.invoke({
+                "nombre_curso": nombre_curso,
+                "nivel_estudios": nivel_estudios,
+                "tema": tema,
+                "context_web": context_web,
+                "contexto_previos": previos_texto,
+                "conceptos_previos": conceptos_previos_todos[-1800:]  # Solo un extracto de los previos para el prompt
+            })
+            if hasattr(conceptos_contenido, "content"):
+                conceptos_contenido = conceptos_contenido.content
+            elif isinstance(conceptos_contenido, dict) and "text" in conceptos_contenido:
+                conceptos_contenido = conceptos_contenido["text"]
+
+            resultados.append({
+                "tema": tema,
+                "conceptos_clave": conceptos_contenido
+            })
+            conceptos_previos_todos += "\n\n" + conceptos_contenido  # Se los pasa a los siguientes temas para evitar repeticiones
+
+        except Exception as e:
+            print(f"Error al generar conceptos para el tema '{tema}': {e}")
+
+    with open("agente7ConceptosClave.json", "w", encoding="utf-8") as f:
+        json.dump(resultados, f, ensure_ascii=False, indent=2)
+
+    print("\n--- Agente7ConceptosClave finalizado. Contenido guardado en 'agente7ConceptosClave.json' ---")
 
 if __name__ == "__main__":
     main()

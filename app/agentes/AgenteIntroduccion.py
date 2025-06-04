@@ -15,8 +15,6 @@ JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
 CONTEXTO_GLOBAL_FILE = "contexto_global.json"
 
-# ===============================
-# LLM Configuration
 llm = ChatGroq(
     model_name="llama3-70b-8192",
     api_key=GROQ_API_KEY,
@@ -92,12 +90,11 @@ def get_best_snippets(serper_response, limit=5):
     snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
-# === PROMPT DEL AGENTE ===
 introduccion_prompt_template = PromptTemplate(
-    input_variables=["nombre", "nivel", "modalidad", "semestre", "context", "contexto_previos"],
+    input_variables=["nombre", "nivel", "modalidad", "semestre", "tema", "context", "contexto_previos"],
     template=(
         "Actúa como un redactor académico experto en educación universitaria y diseño curricular institucional. "
-        "Redacta la introducción para la unidad '{nombre}', dentro del programa de {nivel}, modalidad {modalidad}, semestre {semestre}. "
+        "Redacta la introducción para el tema '{tema}' dentro de la unidad '{nombre}', en el programa de {nivel}, modalidad {modalidad}, semestre {semestre}. "
         "Tienes acceso a antecedentes previos del documento:\n"
         "{contexto_previos}\n"
         "Y el siguiente contexto web:\n"
@@ -105,20 +102,22 @@ introduccion_prompt_template = PromptTemplate(
         "\n"
         "La introducción debe:\n"
         "- Consistir en TRES PÁRRAFOS académicos, claros y motivadores.\n"
-        "- El primer párrafo contextualiza la unidad dentro del plan de estudios, resalta su relevancia profesional y social, y establece una conexión inicial con el futuro desempeño del estudiante.\n"
-        "- El segundo párrafo detalla los temas específicos abordados en la unidad, indicando por qué cada uno es fundamental. Debes usar frases de transición y relaciones entre los temas.\n"
-        "- El tercer párrafo explica cómo el aprendizaje de estos temas fortalece tanto el perfil profesional como el personal del estudiante, incluye una frase inspiradora o de invitación al aprendizaje.\n"
-        "Solicita al final una sección de OBJETIVOS DE APRENDIZAJE con la frase exacta: 'Al finalizar esta unidad, serás capaz de:', seguida de una lista de 4 a 6 objetivos claros, cada uno en una línea, numerados.\n"
+        "- El primer párrafo contextualiza el tema dentro del plan de estudios, resalta su relevancia profesional y social, y establece una conexión inicial con el futuro desempeño del estudiante.\n"
+        "- El segundo párrafo detalla los subtemas o elementos clave del tema, indicando por qué cada uno es fundamental. Usa frases de transición y relaciones entre ellos.\n"
+        "- El tercer párrafo explica cómo el aprendizaje de este tema fortalece tanto el perfil profesional como el personal del estudiante, incluye una frase inspiradora o de invitación al aprendizaje.\n"
+        "Solicita al final una sección de OBJETIVOS DE APRENDIZAJE con la frase exacta: 'Al finalizar este tema, serás capaz de:', seguida de una lista de 3 a 5 objetivos claros, cada uno en una línea, numerados.\n"
         "Procura mantener un tono institucional, redacción impecable y conectores lógicos entre las ideas. No incluyas títulos adicionales, solo el texto.\n"
         "Formato:\n"
-        "[Párrafo 1]\n\n[Párrafo 2]\n\n[Párrafo 3]\n\nAl finalizar esta unidad, serás capaz de:\n1. ...\n2. ...\n3. ...\n"
+        "[Párrafo 1]\n\n[Párrafo 2]\n\n[Párrafo 3]\n\nAl finalizar este tema, serás capaz de:\n1. ...\n2. ...\n3. ...\n"
     )
 )
 
 introduccion_chain = LLMChain(llm=llm, prompt=introduccion_prompt_template)
 
 def main():
-    print("--- Ejecutando AgenteIntroduccion ---")
+    print("--- Ejecutando AgenteIntroduccion POR TEMA ---")
+    resultados = []
+
     contexto_global = leer_contexto_global()
     previos_texto = "\n".join([
         f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
@@ -138,33 +137,49 @@ def main():
     modalidad = materia.get("Modalidad", "Modalidad Desconocida")
     semestre = materia.get("Semestre", "Semestre Desconocido")
     escuela = materia.get("Escuela", "Escuela Desconocida")
+    temas = materia.get("Entrega Contenidos", [])
+    if not temas:
+        print("No hay temas en 'Entrega Contenidos'.")
+        sys.exit(1)
 
-    search_query = f"introducción a {nombre} importancia y objetivos {nivel} {modalidad} semestre {semestre} {escuela}"
-    print(f"AgenteIntroduccion: Buscando en la web con query: '{search_query}'")
-    serper_data = search_web_serper(search_query, limit_organic=4)
-    context_web = get_best_snippets(serper_data, limit=4)
-    if not context_web:
-        context_web = "No se encontró información adicional en la web."
-        print("AgenteIntroduccion: No se obtuvieron snippets de la búsqueda web.")
+    for tema in temas:
+        tema = tema.strip()
+        search_query = f"introducción a {tema} en {nombre} importancia y objetivos {nivel} {modalidad} semestre {semestre} {escuela}"
+        print(f"\nAgenteIntroduccion: Buscando en la web para el tema '{tema}' con query: '{search_query}'")
+        serper_data = search_web_serper(search_query, limit_organic=4)
+        context_web = get_best_snippets(serper_data, limit=4)
+        if not context_web:
+            context_web = "No se encontró información adicional en la web."
+            print(f"AgenteIntroduccion: No se obtuvieron snippets web para el tema '{tema}'.")
 
-    print("AgenteIntroduccion: Generando contenido...")
-    try:
-        introduccion_contenido = introduccion_chain.invoke({
-            "nombre": nombre,
-            "nivel": nivel,
-            "modalidad": modalidad,
-            "semestre": semestre,
-            "context": context_web,
-            "contexto_previos": previos_texto
-        })
-        if isinstance(introduccion_contenido, dict) and "text" in introduccion_contenido:
-            introduccion_contenido = introduccion_contenido["text"]
-        sys.stdout.write(introduccion_contenido)
-        print("\n--- AgenteIntroduccion finalizado ---")
-    except Exception as e:
-        error_msg = f"Error en AgenteIntroduccion al generar contenido: {str(e)}"
-        print(error_msg)
-        sys.stdout.write(f"Error interno en AgenteIntroduccion: No se pudo generar la introducción para {nombre}.")
+        print(f"AgenteIntroduccion: Generando contenido para el tema '{tema}'...")
+        try:
+            introduccion_contenido = introduccion_chain.invoke({
+                "nombre": nombre,
+                "nivel": nivel,
+                "modalidad": modalidad,
+                "semestre": semestre,
+                "tema": tema,
+                "context": context_web,
+                "contexto_previos": previos_texto
+            })
+            if hasattr(introduccion_contenido, "content"):
+                introduccion_contenido = introduccion_contenido.content
+            elif isinstance(introduccion_contenido, dict) and "text" in introduccion_contenido:
+                introduccion_contenido = introduccion_contenido["text"]
+
+            resultado = {
+                "tema": tema,
+                "introduccion": introduccion_contenido
+            }
+            resultados.append(resultado)
+        except Exception as e:
+            print(f"Error al generar introducción para el tema {tema}: {e}")
+
+    # Guarda en un solo archivo JSON (uno por cada tema)
+    with open("agenteIntroduccion.json", "w", encoding="utf-8") as f:
+        json.dump(resultados, f, ensure_ascii=False, indent=2)
+    print("\n--- AgenteIntroduccion finalizado. Contenido guardado en 'agenteIntroduccion.json' ---")
 
 if __name__ == "__main__":
     main()

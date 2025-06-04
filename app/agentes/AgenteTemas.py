@@ -1,13 +1,12 @@
 import os
+import re
 import requests
 import json
 import sys
 from langchain_groq import ChatGroq
-from langchain_core.prompts import PromptTemplate
-from langchain.chains import LLMChain
 
-# ===============================
-# CONFIGURACIÓN DIRECTA DE LAS APIS Y CONSTANTES
+# ==============================
+# CONFIGURACIÓN DE CLAVES Y CONSTANTES
 
 GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
@@ -15,24 +14,14 @@ JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
 CONTEXTO_GLOBAL_FILE = "contexto_global.json"
 
-# ===============================
-# LLM Configuration
+# ==============================
+# INICIALIZA EL LLM (Modelo de lenguaje)
 llm = ChatGroq(
-    model_name="llama3-70b-8192", 
+    model_name="llama3-70b-8192",
     api_key=GROQ_API_KEY,
-    temperature=0.3,  # Menor creatividad, mayor precisión
-    max_tokens=2200
+    temperature=0.4,
+    max_tokens=3000
 )
-
-def leer_contexto_global():
-    if os.path.exists(CONTEXTO_GLOBAL_FILE):
-        with open(CONTEXTO_GLOBAL_FILE, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                print(f"Advertencia: {CONTEXTO_GLOBAL_FILE} contiene JSON inválido. Se devuelve contexto vacío.")
-                return {}
-    return {}
 
 def fetch_course_data():
     url = f"https://api.jsonbin.io/v3/b/{JSON_BIN_ID}/latest"
@@ -42,20 +31,20 @@ def fetch_course_data():
         res.raise_for_status()
         data = res.json()
         record = data.get("record")
-        if record is None: 
+        if record is None:
             if isinstance(data, dict) and "Nombre del Programa" in data:
                 record = data
-            elif isinstance(data, list) and data: 
+            elif isinstance(data, list) and data:
                 record = data[-1]
                 if not isinstance(record, dict):
                     print(f"Advertencia: El último elemento del JSON Bin no es un diccionario: {record}")
                     return None
             else:
-                print(f"Error: La respuesta del JSON Bin no contiene la clave 'record' ni es el registro directamente. Respuesta: {data}")
+                print(f"Error: La respuesta del JSON Bin no contiene 'record' ni es el registro directamente. Respuesta: {data}")
                 return None
-        if isinstance(record, list): 
+        if isinstance(record, list):
             return record[-1] if record else None
-        elif isinstance(record, dict): 
+        elif isinstance(record, dict):
             return record
         else:
             print(f"Error: El contenido de 'record' no es una lista ni un diccionario: {type(record)}")
@@ -63,92 +52,69 @@ def fetch_course_data():
     except requests.exceptions.Timeout:
         print(f"Error: Timeout al intentar acceder a JSON Bin ({url}).")
     except requests.exceptions.RequestException as e:
-        print(f"Error de red al acceder al JSON Bin: {e}")
+        print(f"Error de red al acceder a JSON Bin: {e}")
     except json.JSONDecodeError:
         print(f"Error al decodificar JSON de la respuesta del bin: {res.text if 'res' in locals() else 'No response'}")
     except Exception as e:
         print(f"Error inesperado al obtener datos del curso: {e}")
     return None
 
-def search_web_serper(query, limit_organic=3):
-    url = "https://google.serper.dev/search"
-    headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-    data = {"q": query}
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout en la búsqueda web con Serper para query: {query}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red en la búsqueda web con Serper: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta de Serper: {response.text if 'response' in locals() else 'No response'}")
-    return {"error": "No se pudo realizar la búsqueda"}
+def safe_filename(text):
+    return re.sub(r'[^a-zA-Z0-9_]', '', text.replace(" ", "_").lower())
 
-def get_best_snippets(serper_response, limit=5):
-    if not serper_response or "error" in serper_response or "organic" not in serper_response:
-        return ""
-    snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
-    return "\n".join(snippets[:limit])
-
-# === PROMPT DEL AGENTE TEMAS ===
-temas_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "nivel", "contexto_previos", "context_web"],
-    template=(
-        "Actúa como académico universitario experto en diseño curricular. Tu tarea es proponer la estructura de TEMAS para la unidad '{nombre_curso}' "
-        "(nivel: {nivel}), considerando conceptos clave, competencias y tendencias actuales.\n"
-        "\n"
-        "Estructura la salida en:\n"
-        "1. Lista numerada de TEMAS PRINCIPALES (6-10 temas) con título y breve descripción.\n"
-        "2. Justificación de la secuencia y su relación con el contexto profesional.\n"
-        "Incluye referencias a los antecedentes del documento:\n{contexto_previos}\n"
-        "Y snippets de contexto web:\n{context_web}\n"
-        "Cuida claridad, coherencia y relevancia profesional."
+def generar_contenido_tema(contexto):
+    prompt = (
+        f"Genera un documento académico completo para el tema '{contexto['tema']}' "
+        f"dentro de la materia '{contexto['materia']}' de la carrera '{contexto['carrera']}', "
+        f"semestre {contexto['semestre']}. "
+        "La estructura debe incluir: Introducción, conceptos clave, desarrollo del tema, actividades, conclusiones, y referencias. "
+        "Usa un tono institucional, académico, claro y motivador."
     )
-)
-
-temas_chain = LLMChain(llm=llm, prompt=temas_prompt_template)
-
-def main():
-    print("--- Ejecutando AgenteTemas ---")
-    contexto_global = leer_contexto_global()
-    previos_texto = "\n".join([
-    f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
-    for k, v in contexto_global.items()
-]) or "No hay antecedentes de secciones previas."
-
-    materia = fetch_course_data()
-    if not materia:
-        print("AgenteTemas: No se encontró información de la materia. Terminando.")
-        sys.stdout.write("Error: No se pudo obtener la información del curso.")
-        return
-
-    nombre_curso = materia.get("Nombre del Programa", "Curso Desconocido")
-    nivel = materia.get("Nivel de Estudios", "Nivel Desconocido")
-
-    search_query = f"temario estructura temas {nombre_curso} {nivel} universidad"
-    serper_data = search_web_serper(search_query, limit_organic=5)
-    context_web = get_best_snippets(serper_data, limit=5)
-    if not context_web:
-        context_web = "No se encontró información adicional en la web para temas curriculares."
-
-    print("AgenteTemas: Generando temas curriculares...")
-    try:
-        temas_contenido = temas_chain.invoke({
-            "nombre_curso": nombre_curso,
-            "nivel": nivel,
-            "contexto_previos": previos_texto,
-            "context_web": context_web
-        })
-        if isinstance(temas_contenido, dict) and "text" in temas_contenido:
-            temas_contenido = temas_contenido["text"]
-        sys.stdout.write(temas_contenido)
-        print("\n--- AgenteTemas finalizado ---")
-    except Exception as e:
-        error_msg = f"Error en AgenteTemas al generar temas: {str(e)}"
-        print(error_msg)
-        sys.stdout.write(f"Error interno en AgenteTemas: No se pudieron generar los temas para {nombre_curso}.")
+    response = llm.invoke(prompt)
+    if hasattr(response, "content"):
+        return response.content
+    if isinstance(response, str):
+        return response
+    return str(response)
 
 if __name__ == "__main__":
-    main()
+    print("\n===== LEYENDO BIN =====\n")
+    materia = fetch_course_data()
+    if not materia:
+        print("No se pudo obtener la materia desde JSON Bin.")
+        sys.exit(1)
+    temas = materia.get("Entrega Contenidos", [])
+    if not temas:
+        print("No hay temas en 'Entrega Contenidos'.")
+        sys.exit(1)
+
+    # Info general de materia/carrera/semestre
+    carrera = materia.get("Nombre del Programa", "")
+    nombre_materia = materia.get("Nombre de la Materia", "")
+    semestre = materia.get("Semestre", "")
+
+    resultados_temas = []  # <-- Aquí acumulamos los resultados de todos los temas
+
+    for tema in temas:
+        tema = tema.strip()
+        print(f"\n==============================================")
+        print(f"== GENERANDO DOCUMENTO PARA EL TEMA: {tema}")
+        print(f"==============================================")
+        contexto = {
+            "carrera": carrera,
+            "materia": nombre_materia,
+            "semestre": semestre,
+            "tema": tema,
+        }
+        contenido_generado = generar_contenido_tema(contexto)
+        print(contenido_generado)
+        resultados_temas.append({
+            "tema": tema,
+            "contenido": contenido_generado
+        })
+
+    # Al final, guarda todo en un único JSON
+    with open("agenteTemas.json", "w", encoding="utf-8") as f:
+        json.dump(resultados_temas, f, ensure_ascii=False, indent=2)
+
+    print("\nTodos los temas se han guardado en 'agenteTemas.json'")

@@ -6,21 +6,17 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
-# ===============================
-# CONFIGURACIÓN DIRECTA DE LAS APIS Y CONSTANTES
-
+# Configuración de claves y constantes
 GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
 JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
 CONTEXTO_GLOBAL_FILE = "contexto_global.json"
 
-# ===============================
-# LLM Configuration
 llm = ChatGroq(
-    model_name="llama3-70b-8192", 
+    model_name="llama3-70b-8192",
     api_key=GROQ_API_KEY,
-    temperature=0.3,  # Menor creatividad, mayor precisión
+    temperature=0.3,
     max_tokens=2200
 )
 
@@ -42,10 +38,10 @@ def fetch_course_data():
         res.raise_for_status()
         data = res.json()
         record = data.get("record")
-        if record is None: 
+        if record is None:
             if isinstance(data, dict) and "Nombre del Programa" in data:
                 record = data
-            elif isinstance(data, list) and data: 
+            elif isinstance(data, list) and data:
                 record = data[-1]
                 if not isinstance(record, dict):
                     print(f"Advertencia: El último elemento del JSON Bin no es un diccionario: {record}")
@@ -53,9 +49,9 @@ def fetch_course_data():
             else:
                 print(f"Error: La respuesta del JSON Bin no contiene la clave 'record' ni es el registro directamente. Respuesta: {data}")
                 return None
-        if isinstance(record, list): 
+        if isinstance(record, list):
             return record[-1] if record else None
-        elif isinstance(record, dict): 
+        elif isinstance(record, dict):
             return record
         else:
             print(f"Error: El contenido de 'record' no es una lista ni un diccionario: {type(record)}")
@@ -92,13 +88,11 @@ def get_best_snippets(serper_response, limit=5):
     snippets = [r.get("snippet", "") for r in serper_response.get("organic", []) if r.get("snippet")]
     return "\n".join(snippets[:limit])
 
-# === PROMPT DEL AGENTE QUIZ Y ACTIVIDADES ===
-
 quiz_actividades_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "nivel", "contexto_previos", "context_web"],
+    input_variables=["nombre_curso", "nivel", "tema", "contexto_previos", "context_web"],
     template=(
-        "Actúa como diseñador académico para educación universitaria. Tu misión es generar la sección de Evaluación y Actividades para la unidad '{nombre_curso}' "
-        "(nivel: {nivel}), integrando los conceptos clave, temas vistos y competencias de la unidad.\n"
+        "Actúa como diseñador académico para educación universitaria. Tu misión es generar la sección de Evaluación y Actividades para el tema '{tema}' "
+        "de la unidad '{nombre_curso}' (nivel: {nivel}), integrando los conceptos clave, temas vistos y competencias del tema.\n"
         "\n"
         "Estructura la salida en TRES BLOQUES:\n"
         "1. Actividades de Aplicación: Redacta 2 actividades prácticas o ejercicios de desarrollo para reforzar lo aprendido, incluyendo enunciado claro, instrucciones, y criterios de evaluación.\n"
@@ -107,7 +101,7 @@ quiz_actividades_prompt_template = PromptTemplate(
         "   - 4 opciones (a, b, c, d)\n"
         "   - Respuesta correcta marcada\n"
         "   - Explicación breve de la respuesta\n"
-        "3. Desafío Abierto: Propón una situación o problema realista en el contexto profesional, que requiera integración de varios conceptos de la unidad. Incluye orientación sobre cómo abordarlo.\n"
+        "3. Desafío Abierto: Propón una situación o problema realista en el contexto profesional, que requiera integración de varios conceptos del tema. Incluye orientación sobre cómo abordarlo.\n"
         "\n"
         "Incluye referencias a los antecedentes del documento:\n{contexto_previos}\n"
         "Y snippets de contexto web:\n{context_web}\n"
@@ -118,7 +112,9 @@ quiz_actividades_prompt_template = PromptTemplate(
 quiz_actividades_chain = LLMChain(llm=llm, prompt=quiz_actividades_prompt_template)
 
 def main():
-    print("--- Ejecutando AgenteQuizActividades ---")
+    print("--- Ejecutando AgenteQuizActividades (por TEMA) ---")
+    resultados = []
+
     contexto_global = leer_contexto_global()
     previos_texto = "\n".join([
         f"Resumen de '{k}':\n{(v[:350]+'...' if isinstance(v,str) else json.dumps(v)[:350]+'...' if v else 'Sin contenido.')}"
@@ -131,32 +127,48 @@ def main():
         sys.stdout.write("Error: No se pudo obtener la información del curso.")
         return
 
-    nombre_curso = materia.get("Nombre del Programa", "Curso Desconocido")
+    nombre_curso = materia.get("Nombre de la Materia", "Materia Desconocida")
     nivel = materia.get("Nivel de Estudios", "Nivel Desconocido")
+    temas = materia.get("Entrega Contenidos", [])
+    if not temas:
+        print("No hay temas en 'Entrega Contenidos'.")
+        sys.exit(1)
 
-    search_query = f"ejercicios actividades quiz evaluación {nombre_curso} nivel universitario"
-    serper_data = search_web_serper(search_query, limit_organic=4)
-    context_web = get_best_snippets(serper_data, limit=4)
-    if not context_web:
-        context_web = "No se encontró información adicional en la web para actividades y quiz."
+    for tema in temas:
+        tema = tema.strip()
+        search_query = f"ejercicios actividades quiz evaluación {nombre_curso} {tema} nivel universitario"
+        serper_data = search_web_serper(search_query, limit_organic=4)
+        context_web = get_best_snippets(serper_data, limit=4)
+        if not context_web:
+            context_web = "No se encontró información adicional en la web para actividades y quiz."
 
-    print("AgenteQuizActividades: Generando contenido de actividades y quiz...")
-    try:
-        quiz_actividades_contenido = quiz_actividades_chain.invoke({
-            "nombre_curso": nombre_curso,
-            "nivel": nivel,
-            "contexto_previos": previos_texto,
-            "context_web": context_web
-        })
-        # Si la respuesta viene en dict (como {"text": ...}), extrae el texto
-        if isinstance(quiz_actividades_contenido, dict) and "text" in quiz_actividades_contenido:
-            quiz_actividades_contenido = quiz_actividades_contenido["text"]
-        sys.stdout.write(quiz_actividades_contenido)
-        print("\n--- AgenteQuizActividades finalizado ---")
-    except Exception as e:
-        error_msg = f"Error en AgenteQuizActividades al generar contenido: {str(e)}"
-        print(error_msg)
-        sys.stdout.write(f"Error interno en AgenteQuizActividades: No se pudieron generar actividades y quiz para {nombre_curso}.")
+        print(f"\n--- Generando actividades y quiz para el tema: {tema} ---")
+        try:
+            quiz_actividades_contenido = quiz_actividades_chain.invoke({
+                "nombre_curso": nombre_curso,
+                "nivel": nivel,
+                "tema": tema,
+                "contexto_previos": previos_texto,
+                "context_web": context_web
+            })
+            if hasattr(quiz_actividades_contenido, "content"):
+                quiz_actividades_contenido = quiz_actividades_contenido.content
+            elif isinstance(quiz_actividades_contenido, dict) and "text" in quiz_actividades_contenido:
+                quiz_actividades_contenido = quiz_actividades_contenido["text"]
+
+            resultado = {
+                "tema": tema,
+                "actividades_y_quiz": quiz_actividades_contenido
+            }
+            resultados.append(resultado)
+        except Exception as e:
+            print(f"Error con tema {tema}: {e}")
+
+    # Guarda todos los bloques en un único archivo JSON
+    with open("agenteQuizActividades.json", "w", encoding="utf-8") as f:
+        json.dump(resultados, f, ensure_ascii=False, indent=2)
+
+    print("\n--- TODOS los temas se han guardado en 'agenteQuizActividades.json' ---")
 
 if __name__ == "__main__":
     main()
