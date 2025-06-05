@@ -24,7 +24,7 @@ def run_ensamblador(job_id):
     try:
         result = subprocess.run(
             ["python3", ENSAMBLADOR_PATH],
-            capture_output=True, text=True, cwd=BASE_DIR, timeout=600
+            capture_output=True, text=True, cwd=BASE_DIR, timeout=500   
         )
         output = {
             "status": "done" if result.returncode == 0 else "error",
