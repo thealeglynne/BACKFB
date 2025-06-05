@@ -83,20 +83,24 @@ def get_best_snippets(serper_response, limit=5):
 ensayo_podcast_prompt_template = PromptTemplate(
     input_variables=["nombre_curso", "essay_topic", "context_web", "contexto_previos", "ensayo_previo"],
     template=(
-        "Actúa como guionista académico institucional para un podcast universitario. "
-        "Vas a crear un guion creativo, original y profesional sobre el tema '{essay_topic}' dentro de la unidad '{nombre_curso}'. "
-        "Ya escribiste un ensayo anterior sobre '{ensayo_previo}'. En este nuevo ensayo, **NO repitas las mismas frases, ejemplos ni estilo**. "
-        "Cambia la forma de enganchar, el tipo de ejemplos, analogías, o recursos narrativos. "
-        "Usa metáforas, historias, analogías, citas célebres o recursos originales. Atrévete a variar el enfoque, pero siempre mantente dentro del rigor académico y del tema. "
-        "Revisa estos antecedentes:\n{contexto_previos}\nY el contexto web:\n{context_web}\n"
+        "Actúa como redactor académico experto en educación universitaria y desarrollo de ensayos para documentos extensos y virtualizados. "
+        "Vas a desarrollar un **ensayo académico completo y profundo** sobre el tema '{essay_topic}' para la unidad del curso '{nombre_curso}'. "
         "\n"
-        "Estructura obligatoria (sin títulos extra):\n"
-        "1. Título del segmento.\n"
-        "2. [Introducción del Host]: Breve bienvenida, explicación del propósito y motivación inicial.\n"
-        "3. [Enganche Inicial]: Dato curioso, pregunta potente, cita o anécdota relevante distinta a la usada antes.\n"
-        "4. [Desarrollo]: Expón el tema en varios párrafos, conecta hitos históricos, evolución conceptual, impacto actual, desafíos y proyecciones. Relaciona el contenido con competencias profesionales reales, incluye ejemplos o analogías, y utiliza transiciones fluidas.\n"
-        "5. [Recomendación]: Sugerencia de libro, artículo, video o recurso serio y real, con justificación breve (diferente al anterior).\n"
-        "6. [Conclusión]: Recapitula lo esencial, motiva al oyente a profundizar, invita a la acción o a la siguiente entrega."
+        "Sigue estas INSTRUCCIONES OBLIGATORIAS:\n"
+        "• El ensayo debe estar compuesto por **al menos 6 párrafos** de mínimo 6 líneas cada uno. Puedes ampliar la extensión según la complejidad del subtema.\n"
+        "• Redacta párrafos fluidos y bien estructurados (no enumeres ni separes artificialmente).\n"
+        "• Integra y menciona en el texto **teorías, enfoques y autores reconocidos reales** del área (menciona el autor en el texto o entre paréntesis, como en un artículo académico). Si es posible, cita uno o dos autores en inglés.\n"
+        "• Relaciona el subtema con situaciones, aplicaciones o desafíos reales actuales, buscando siempre un enfoque internacional, no localista. Evita centrarte únicamente en el contexto colombiano.\n"
+        "• Utiliza ejemplos actuales, estudios de caso, datos, tendencias globales o problemas reales que ilustren y profundicen las ideas.\n"
+        "• Elabora ideas profundas y argumentadas, conectando los aportes teóricos con la práctica profesional, las competencias y los retos contemporáneos.\n"
+        "• Evita repeticiones innecesarias y procura que cada párrafo aporte algo nuevo y relevante.\n"
+        "• Revisa y aprovecha los siguientes antecedentes:\n{contexto_previos}\n"
+        "• Usa también este contexto web:\n{context_web}\n"
+        "• Si hay un ensayo previo, NO repitas frases, ejemplos ni recursos ya usados. Cambia el enfoque o los ejemplos.\n"
+        "• Mantén un tono académico, objetivo, claro y profesional, adecuado para un documento universitario de alta exigencia.\n"
+        "• No incluyas títulos, subtítulos ni encabezados, solo los párrafos bien conectados.\n"
+        "\n"
+        "ENTREGA SOLO EL ENSAYO, NO INCLUYAS INSTRUCCIONES NI FORMATO EXTRA."
     )
 )
 ensayo_podcast_chain = LLMChain(llm=llm, prompt=ensayo_podcast_prompt_template)

@@ -83,22 +83,26 @@ def get_best_snippets(serper_response, limit=5):
 
 # === PROMPT DEL AGENTE ===
 conceptos_clave_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "nivel_estudios", "tema", "context_web", "contexto_previos", "conceptos_previos"],
+     input_variables=["nombre_curso", "nivel_estudios", "tema", "context_web", "contexto_previos", "conceptos_previos"],
     template=(
-        "Actúa como académico institucional, experto en divulgación creativa, y genera material base para infografía y comprensión profunda del tema '{tema}', "
-        "dentro de la unidad '{nombre_curso}' para estudiantes de {nivel_estudios}. "
-        "Considera estos antecedentes del documento:\n{contexto_previos}\n"
-        "Snippets web relevantes:\n{context_web}\n"
-        "Conceptos clave ya generados para otros temas:\n{conceptos_previos}\n"
+        "Actúa como académico universitario experto en educación y divulgación didáctica. "
+        "Desarrolla la sección 'Conceptos clave' para el tema '{tema}' dentro de la unidad del curso '{nombre_curso}' para estudiantes de {nivel_estudios}.\n\n"
+        "INSTRUCCIONES OBLIGATORIAS:\n"
+        "- Elabora una lista de SIETE (7) conceptos clave absolutamente esenciales para comprender profundamente este tema. "
+        "Cada concepto debe tener un título breve (máximo 3 palabras), original, claro y diferente de los usados en otros temas (evita repeticiones del bloque 'conceptos_previos').\n"
+        "- Para cada concepto, escribe el nombre en **negrita** seguido de dos puntos (ejemplo: **Pensamiento Computacional:**).\n"
+        "- Desarrolla un único párrafo explicativo de al menos 6 líneas, redactado en lenguaje claro, profesional y didáctico. "
+        "La explicación debe ser relevante, profunda y original. Explica el concepto, su importancia, cómo se aplica en la práctica profesional o académica, y si es pertinente, relaciónalo con otros conceptos del tema. "
+        "Utiliza ejemplos, analogías, metáforas o comparaciones para facilitar la comprensión, pero sin perder el tono formal ni la profundidad académica.\n"
+        "- Revisa los antecedentes del documento:\n{contexto_previos}\n"
+        "- Incluye elementos valiosos de estos snippets web:\n{context_web}\n"
+        "- No repitas ni copies literalmente conceptos ya generados en otros temas:\n{conceptos_previos}\n"
         "\n"
-        "Identifica y define SIETE (7) conceptos clave, absolutamente esenciales para comprender a fondo este tema (evita repetir literalmente conceptos de otros temas).\n"
-        "Para cada concepto:\n"
-        "- Escribe el nombre en negrita seguido de dos puntos (ejemplo: **Pensamiento Computacional:**).\n"
-        "- Da una definición académica, clara y precisa (máx. 5 frases), incluye una breve aplicación práctica o ejemplo concreto. Usa analogías, metáforas o comparaciones diferentes para que cada explicación sea original. Señala, cuando corresponda, relaciones con otros conceptos del mismo tema.\n"
-        "El texto debe ser formal, creativo y útil para material gráfico didáctico.\n"
-        "Formato de salida:\n"
-        "**Concepto 1:** Definición extendida, ejemplo y vínculos.\n\n"
-        "... (continúa hasta 7 conceptos) ..."
+        "Entrega únicamente la lista de los siete conceptos, con su explicación de párrafo extenso cada uno, sin títulos adicionales ni instrucciones. "
+        "El formato debe ser:\n"
+        "**Concepto 1:** Párrafo explicativo de al menos 6 líneas.\n\n"
+        "**Concepto 2:** Párrafo explicativo de al menos 6 líneas.\n\n"
+        "...(continúa hasta 7 conceptos)..."
     )
 )
 

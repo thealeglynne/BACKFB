@@ -83,21 +83,23 @@ def get_best_snippets(serper_response, limit=5):
 
 # === PROMPT DEL AGENTE (¡variado y diferente por tema!) ===
 conclusiones_prompt_template = PromptTemplate(
-    input_variables=["nombre_curso", "tema", "expert_name", "context_web", "contexto_previos", "conclusion_previa"],
+    input_variables=["nombre_curso", "tema", "context_web", "contexto_previos", "conclusiones_previas"],
     template=(
-        "Actúa como guionista de cierre académico para una unidad de '{nombre_curso}'. "
-        "Elabora un diálogo de cierre creativo y reflexivo entre Presentador y el/la experto/a '{expert_name}', para el tema '{tema}'. "
-        "Ya se hizo una conclusión previa para otro tema, así que esta vez usa un **enfoque diferente**, evita repetir frases, anécdotas o recursos, y elige otra forma de motivar y cerrar. "
-        "Puedes incorporar frases célebres, metáforas, preguntas inspiradoras o recursos literarios que no se hayan usado en el anterior. "
-        "Incluye referencias a los antecedentes del documento:\n{contexto_previos}\nY contexto web:\n{context_web}\n"
-        "Puedes mencionar desafíos y oportunidades profesionales vinculados a este tema.\n"
-        "Estructura:\n"
-        "- Presentador da la bienvenida y contextualiza el cierre para el tema '{tema}'.\n"
-        "- Presentador solicita a {expert_name} un resumen de los aprendizajes clave, vinculando cada tema a competencias y situaciones profesionales reales.\n"
-        "- {expert_name} responde desarrollando los puntos principales, explicando cómo estos conocimientos impactan la formación integral y el futuro del estudiante, usando un recurso narrativo distinto al anterior.\n"
-        "- {expert_name} ofrece una reflexión motivadora sobre la importancia de la formación continua, distinta a la previa.\n"
-        "- Presentador despide agradeciendo y motivando a los estudiantes, con una frase final original.\n"
-        "Mantén un tono formal, reflexivo y editorial, pero con toques originales y distintos en cada cierre. Usa transiciones suaves y frases de inspiración final."
+        "Actúa como redactor académico universitario experto en elaboración de conclusiones para documentos extensos de formación profesional. "
+        "Vas a escribir la sección de **Conclusiones** para el tema '{tema}' en la unidad del curso '{nombre_curso}'. "
+        "La sección debe consistir en **cinco (5) conclusiones**, cada una desarrollada en un párrafo extenso de al menos 6 líneas. "
+        "\n"
+        "INSTRUCCIONES ESTRICTAS:\n"
+        "- Cada conclusión debe integrar reflexiones profundas sobre todos los contenidos desarrollados en la unidad.\n"
+        "- Relaciona la importancia de los conocimientos abordados, su aplicabilidad real en contextos profesionales y el impacto personal y ético del aprendizaje.\n"
+        "- Aborda los desafíos, oportunidades y la relevancia de seguir actualizándose en el tema.\n"
+        "- Cada conclusión debe aportar un ángulo diferente, evitando repeticiones y redundancias.\n"
+        "- Evita frases genéricas o vacías: utiliza argumentación clara, ejemplos, referencias a situaciones reales, y reflexiones que motiven al estudiante a valorar y aplicar lo aprendido.\n"
+        "- Utiliza tanto los antecedentes previos del documento como el contexto web proporcionado:\n{contexto_previos}\n{context_web}\n"
+        "- Si existen conclusiones previas para otros temas, NO repitas ideas, argumentos ni recursos narrativos; busca originalidad en el enfoque y la redacción.\n"
+        "- Mantén un tono formal, profundo, motivador y profesional. Redacta los cinco párrafos de corrido, sin títulos ni subtítulos.\n"
+        "\n"
+        "Entrega solo los 5 párrafos de conclusiones, cada uno claramente separado y extenso."
     )
 )
 

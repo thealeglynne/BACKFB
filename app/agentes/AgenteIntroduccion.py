@@ -93,24 +93,30 @@ def get_best_snippets(serper_response, limit=5):
 introduccion_prompt_template = PromptTemplate(
     input_variables=["nombre", "nivel", "modalidad", "semestre", "tema", "context", "contexto_previos"],
     template=(
-        "Actúa como un redactor académico experto en educación universitaria y diseño curricular institucional. "
-        "Redacta la introducción para el tema '{tema}' dentro de la unidad '{nombre}', en el programa de {nivel}, modalidad {modalidad}, semestre {semestre}. "
-        "Tienes acceso a antecedentes previos del documento:\n"
-        "{contexto_previos}\n"
-        "Y el siguiente contexto web:\n"
-        "{context}\n"
+        "Actúa como un redactor académico experto en educación universitaria y en desarrollo de documentos extensos para entornos virtuales. "
+        "Vas a redactar la introducción formal para el tema '{tema}', correspondiente a la unidad '{nombre}', del programa de {nivel}, modalidad {modalidad}, semestre {semestre}. "
+        "El texto que generes debe cumplir *ESTRICTAMENTE* con estos lineamientos institucionales para apertura de unidades de 20 a 30 páginas:\n"
         "\n"
-        "La introducción debe:\n"
-        "- Consistir en TRES PÁRRAFOS académicos, claros y motivadores.\n"
-        "- El primer párrafo contextualiza el tema dentro del plan de estudios, resalta su relevancia profesional y social, y establece una conexión inicial con el futuro desempeño del estudiante.\n"
-        "- El segundo párrafo detalla los subtemas o elementos clave del tema, indicando por qué cada uno es fundamental. Usa frases de transición y relaciones entre ellos.\n"
-        "- El tercer párrafo explica cómo el aprendizaje de este tema fortalece tanto el perfil profesional como el personal del estudiante, incluye una frase inspiradora o de invitación al aprendizaje.\n"
-        "Solicita al final una sección de OBJETIVOS DE APRENDIZAJE con la frase exacta: 'Al finalizar este tema, serás capaz de:', seguida de una lista de 3 a 5 objetivos claros, cada uno en una línea, numerados.\n"
-        "Procura mantener un tono institucional, redacción impecable y conectores lógicos entre las ideas. No incluyas títulos adicionales, solo el texto.\n"
-        "Formato:\n"
-        "[Párrafo 1]\n\n[Párrafo 2]\n\n[Párrafo 3]\n\nAl finalizar este tema, serás capaz de:\n1. ...\n2. ...\n3. ...\n"
+        "1. La introducción debe estar compuesta por **CINCO (5) párrafos**, cada uno de mínimo 6 líneas, en tono académico y motivador, perfectamente conectados.\n"
+        "2. El primer párrafo contextualiza el tema en el campo profesional y social, y lo vincula al plan de estudios y al futuro desempeño del estudiante.\n"
+        "3. El segundo párrafo presenta la importancia del tema, su actualidad y pertinencia para el desarrollo profesional y personal.\n"
+        "4. El tercer párrafo expone y relaciona los grandes apartados y subtemas que serán desarrollados en el documento, explicando el porqué de cada uno.\n"
+        "5. El cuarto párrafo destaca cómo dominar estos contenidos contribuye al perfil profesional, al pensamiento crítico y a la capacidad de innovación del estudiante.\n"
+        "6. El quinto párrafo concluye la introducción, invitando a la exploración activa del tema y resaltando el valor de los aprendizajes, con una frase inspiradora.\n"
+        "7. Al finalizar, incluye la sección **'Objetivos de aprendizaje'** (usa esa frase exactamente como encabezado), seguida de una lista numerada con **al menos 4 objetivos**, claros, precisos y enunciados en infinitivo.\n"
+        "Utiliza los siguientes insumos como contexto relevante:\n"
+        "- Antecedentes previos del documento:\n{contexto_previos}\n"
+        "- Contexto web:\n{context}\n"
+        "\n"
+        "No incluyas títulos adicionales ni instrucciones, solo el texto fluido de la introducción y luego la lista de objetivos. "
+        "La redacción debe ser original, cohesiva y adecuada para un documento académico de referencia. "
+        "Evita repeticiones y cuida la calidad gramatical y argumentativa. "
+        "\n"
+        "Formato esperado:\n"
+        "[Párrafo 1]\n\n[Párrafo 2]\n\n[Párrafo 3]\n\n[Párrafo 4]\n\n[Párrafo 5]\n\nObjetivos de aprendizaje:\n1. ...\n2. ...\n3. ...\n4. ...\n"
     )
 )
+
 
 introduccion_chain = LLMChain(llm=llm, prompt=introduccion_prompt_template)
 

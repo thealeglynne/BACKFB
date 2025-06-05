@@ -91,23 +91,24 @@ def get_best_snippets(serper_response, limit=5):
 quiz_actividades_prompt_template = PromptTemplate(
     input_variables=["nombre_curso", "nivel", "tema", "contexto_previos", "context_web"],
     template=(
-        "Actúa como diseñador académico para educación universitaria. Tu misión es generar la sección de Evaluación y Actividades para el tema '{tema}' "
-        "de la unidad '{nombre_curso}' (nivel: {nivel}), integrando los conceptos clave, temas vistos y competencias del tema.\n"
-        "\n"
-        "Estructura la salida en TRES BLOQUES:\n"
-        "1. Actividades de Aplicación: Redacta 2 actividades prácticas o ejercicios de desarrollo para reforzar lo aprendido, incluyendo enunciado claro, instrucciones, y criterios de evaluación.\n"
-        "2. Quiz de Repaso: Crea 4 preguntas tipo quiz, cada una con:\n"
-        "   - Enunciado (pregunta clara)\n"
-        "   - 4 opciones (a, b, c, d)\n"
+        "Actúa como diseñador académico universitario especializado en evaluación de aprendizajes. Vas a crear la sección de 'Actividades de evaluación y quiz' para el tema '{tema}' "
+        "de la unidad '{nombre_curso}' (nivel: {nivel}), integrando los contenidos clave y competencias abordadas.\n\n"
+        "Sigue estas INSTRUCCIONES ESTRICTAS:\n"
+        "1. **Quiz de Selección Múltiple:** Elabora 5 preguntas de selección múltiple, cada una con:\n"
+        "   - Enunciado claro y alineado con los contenidos fundamentales del tema\n"
+        "   - 4 opciones de respuesta (a, b, c, d)\n"
         "   - Respuesta correcta marcada\n"
-        "   - Explicación breve de la respuesta\n"
-        "3. Desafío Abierto: Propón una situación o problema realista en el contexto profesional, que requiera integración de varios conceptos del tema. Incluye orientación sobre cómo abordarlo.\n"
-        "\n"
-        "Incluye referencias a los antecedentes del documento:\n{contexto_previos}\n"
-        "Y snippets de contexto web:\n{context_web}\n"
-        "Cuida la redacción académica, claridad, variedad temática y relación con el contexto profesional."
+        "   - Una retroalimentación breve y académica para cada pregunta (que explique por qué la opción correcta es la más adecuada)\n"
+        "   - Las preguntas deben abarcar todo el tema, evitar repeticiones y evaluar tanto conceptos como aplicación y análisis.\n"
+        "2. **Quiz de Verdadero/Falso:** Formula 3 preguntas V/F, cada una con la respuesta correcta y una retroalimentación breve (que justifique la respuesta correcta). Incluye variedad conceptual y práctica.\n"
+        "3. **Actividad Aplicada (opcional):** Propón una actividad breve de análisis o aplicación real, adecuada para estudiantes universitarios, alineada con el tema (ejemplo: un caso a resolver, una reflexión, o una mini-investigación). Incluye instrucciones claras.\n\n"
+        "• Revisa e integra los antecedentes del documento:\n{contexto_previos}\n"
+        "• Utiliza también este contexto web:\n{context_web}\n"
+        "• Redacta de manera académica, clara, sin títulos ni bloques extra (entrega directo el contenido para copiar/pegar en el documento).\n"
+        "• Garantiza que las preguntas y actividades sean variadas, relevantes y de nivel universitario. Evita repeticiones, ambigüedades o preguntas superficiales."
     )
 )
+
 
 quiz_actividades_chain = LLMChain(llm=llm, prompt=quiz_actividades_prompt_template)
 
