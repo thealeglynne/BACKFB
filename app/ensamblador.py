@@ -3,13 +3,14 @@ import subprocess
 import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 ORQUESTADOR_PATH = os.path.join(BASE_DIR, "agenteOrquestador.py")
 
-# Paths a los archivos JSON generados por cada agente
+# Archivos de output esperados por cada agente, ubicados en la raíz
 FILES = {
     "Agente Temas": "agenteTemas.json",
     "Agente Introduccion": "agenteIntroduccion.json",
-    "Agente 7conceptosClave": "agente7conceptosClave.json",
+    "Agente 7conceptosClave": "agente7ConceptosClave.json",
     "Agente Ensayo": "agenteEnsayo.json",
     "Agente Conclusiones": "agenteConclusiones.json",
     "Agente QuizActividades": "agenteQuizActividades.json"
@@ -32,6 +33,7 @@ def ejecutar_orquestador():
         print("Orquestador ejecutado correctamente.\n")
 
 def cargar_json_salida(path):
+    print(f"Buscando archivo: {path} -> {'Existe' if os.path.exists(path) else 'NO existe'}")
     if not os.path.exists(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
@@ -64,7 +66,7 @@ def mostrar_documentos_completos(temas_por_agente):
         print("="*60)
         print(f"TEMA: {tema.upper()}")
         print("="*60)
-        # Orden deseado
+        # Orden de los agentes en la salida
         orden = [
             "Agente Temas",
             "Agente Introduccion",
@@ -78,17 +80,16 @@ def mostrar_documentos_completos(temas_por_agente):
             print("\n" + "="*60)
             print(f"== {agente} ==")
             print("="*60)
-            # Buscamos la clave de contenido relevante en cada agente:
-            contenido = (
-                doc.get("contenido")
-                or doc.get("introduccion")
-                or doc.get("conceptos_clave")
-                or doc.get("ensayo")
-                or doc.get("conclusiones")
-                or doc.get("actividades_y_quiz")
-                or json.dumps(doc, ensure_ascii=False, indent=2)
-                if doc else "(Sin contenido para este agente)"
-            )
+            if doc:
+                # Busca las claves relevantes (de más específico a más general)
+                for campo in ["contenido", "introduccion", "conceptos_clave", "ensayo", "conclusiones", "actividades_y_quiz"]:
+                    if campo in doc and doc[campo]:
+                        contenido = doc[campo]
+                        break
+                else:
+                    contenido = json.dumps(doc, ensure_ascii=False, indent=2)
+            else:
+                contenido = "(Sin contenido para este agente)"
             print(contenido)
             print(f"--- {agente} finalizado ---\n")
         print("\n\n")
