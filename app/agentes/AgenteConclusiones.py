@@ -9,7 +9,7 @@ from langchain.chains import LLMChain
 # ===============================
 # CONFIGURACIÓN DIRECTA DE APIS Y CONSTANTES
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
 JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
