@@ -8,7 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
 # ... tus claves/configuración ...
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
 
 llm = ChatGroq(

@@ -6,8 +6,20 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+# === NUEVA FUNCIÓN FLEXIBLE DE EXTRACCIÓN ===
+def get_value(materia, posibles_nombres, default=""):
+    for name in posibles_nombres:
+        if name in materia:
+            return materia[name]
+    # Variante por minúsculas y sin tildes
+    for name in posibles_nombres:
+        for k in materia:
+            if k.lower().replace('í','i').replace('á','a').replace('é','e').replace('ó','o').replace('ú','u') == name.lower().replace('í','i').replace('á','a').replace('é','e').replace('ó','o').replace('ú','u'):
+                return materia[k]
+    return default
+
 # Configuración de claves y constantes
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 SERPER_API_KEY = "5f7dbe7e7ce70029c6cddd738417a3e4132d6e47"
 JSON_BIN_ID = "682f27e08960c979a59f5afe"
 JSON_BIN_API_KEY = "$2a$10$CWeZ66JKpedXMgIy/CDyYeEoH18x8tgxZDNBGDeHRSAusOVtHrwce"
@@ -74,13 +86,8 @@ def search_web_serper(query, limit_organic=3):
         response = requests.post(url, headers=headers, json=data, timeout=10)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.Timeout:
-        print(f"Error: Timeout en la búsqueda web con Serper para query: {query}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red en la búsqueda web con Serper: {e}")
-    except json.JSONDecodeError:
-        print(f"Error al decodificar JSON de la respuesta de Serper: {response.text if 'response' in locals() else 'No response'}")
-    return {"error": "No se pudo realizar la búsqueda"}
+    except Exception:
+        return {"error": "No se pudo realizar la búsqueda"}
 
 def get_best_snippets(serper_response, limit=5):
     if not serper_response or "error" in serper_response or "organic" not in serper_response:
@@ -109,7 +116,6 @@ quiz_actividades_prompt_template = PromptTemplate(
     )
 )
 
-
 quiz_actividades_chain = LLMChain(llm=llm, prompt=quiz_actividades_prompt_template)
 
 def main():
@@ -128,9 +134,10 @@ def main():
         sys.stdout.write("Error: No se pudo obtener la información del curso.")
         return
 
-    nombre_curso = materia.get("Nombre de la Materia", "Materia Desconocida")
-    nivel = materia.get("Nivel de Estudios", "Nivel Desconocido")
-    temas = materia.get("Entrega Contenidos", [])
+    # --------- CAMBIOS PARA FLEXIBILIDAD DE CAMPOS -----------
+    nombre_curso = get_value(materia, ["Nombre de la Materia", "Nombre del Programa", "materia", "programa"], "Materia Desconocida")
+    nivel = get_value(materia, ["Nivel de Estudios", "nivel", "Nivel"], "Nivel Desconocido")
+    temas = get_value(materia, ["Entrega Contenidos", "temas", "contenidos"], [])
     if not temas:
         print("No hay temas en 'Entrega Contenidos'.")
         sys.exit(1)
